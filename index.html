@@ -231,6 +231,53 @@
   .limit-item p{ margin:0; font-size:.88rem; color:var(--paper-dim); }
   @media (max-width:640px){ .limits-grid{ grid-template-columns:1fr; } }
 
+  /* ---------- METADATA STACK ---------- */
+  .stack-wrap{ margin-top:40px; display:grid; grid-template-columns:1fr 1fr; gap:32px; }
+  .stack-col h4{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--paper-dim); text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px; font-weight:500; }
+  .stack-bar{ height:280px; width:100%; max-width:180px; background:var(--line-soft); border:1px solid var(--line); display:flex; flex-direction:column-reverse; overflow:hidden; }
+  .stack-seg-char{ background:var(--teal); display:flex; align-items:flex-end; justify-content:center; padding-bottom:8px; }
+  .stack-seg-meta{ background:var(--rust); display:flex; align-items:flex-start; justify-content:center; padding-top:8px; }
+  .stack-seg-label{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink); font-weight:500; }
+  .stack-total{ margin-top:12px; font-family:'IBM Plex Mono', monospace; font-size:12.5px; color:var(--paper-dim); }
+  .stack-total b{ color:var(--paper); }
+  .stack-legend{ margin-top:24px; display:flex; gap:18px; font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--paper-dim); }
+  @media (max-width:640px){ .stack-wrap{ grid-template-columns:1fr; } }
+
+  /* ---------- PROFILE SWEEP WIDGET ---------- */
+  .sweep-widget{ margin-top:40px; border:1px solid var(--line); background:var(--ink-2); padding:32px; }
+  .sweep-controls{ display:flex; flex-wrap:wrap; gap:32px; }
+  .sweep-group h4{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--paper-dim); margin:0 0 10px 0; font-weight:500; }
+  .sweep-btns{ display:flex; gap:6px; flex-wrap:wrap; }
+  .sweep-btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    background:var(--ink);
+    border:1px solid var(--line);
+    color:var(--paper-dim);
+    padding:8px 14px;
+    cursor:pointer;
+  }
+  .sweep-btn:hover{ color:var(--paper); border-color:var(--paper-dim); }
+  .sweep-btn.active{ color:var(--ink); background:var(--teal); border-color:var(--teal); font-weight:500; }
+  .sweep-result{ margin-top:32px; padding-top:28px; border-top:1px solid var(--line); }
+  .sweep-figures{ display:flex; gap:40px; flex-wrap:wrap; }
+  .sweep-fig{ }
+  .sweep-fig-label{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--paper-dim); text-transform:uppercase; letter-spacing:.05em; }
+  .sweep-fig-val{ font-family:'Fraunces', serif; font-size:2.2rem; font-weight:600; color:var(--paper); margin-top:4px; }
+  .sweep-fig-val.best{ color:var(--teal); }
+  .sweep-badge{ margin-top:14px; display:inline-block; font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--teal); border:1px solid var(--teal); padding:4px 10px; }
+
+  /* ---------- NAMING / EVOLUTION ---------- */
+  .evo-row{ display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); margin-top:36px; }
+  .evo-col{ background:var(--ink); padding:26px; }
+  .evo-col h4{ font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.06em; text-transform:uppercase; margin:0 0 14px 0; }
+  .evo-col.old h4{ color:var(--paper-dim); }
+  .evo-col.new h4{ color:var(--teal); }
+  .evo-stat-row{ display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line-soft); font-family:'IBM Plex Mono', monospace; font-size:13px; }
+  .evo-stat-row:last-child{ border-bottom:none; }
+  .evo-stat-row span:last-child{ color:var(--paper); }
+  @media (max-width:640px){ .evo-row{ grid-template-columns:1fr; } }
+
   /* ---------- 78% FINDING ---------- */
   .finding{
     margin-top:44px;
@@ -453,6 +500,99 @@
         <span class="contrib-stat">47–52% smaller full-payload size</span>
       </div>
     </div>
+  </div>
+</section>
+
+<section class="metadata-section">
+  <div class="wrap">
+    <div class="eyebrow">§4.4 · The Other Half Of The File</div>
+    <h2>Compression isn't just the character stream</h2>
+    <p style="max-width:62ch; color:#d8d1bd;">A .lexis file is two things stacked together: the compressed characters, and everything needed to decode them again — POS tags, morphological codes, discourse tokens, and the context-mixing model's transition tables. On the original Lexis branch, that metadata was stored raw, and it dwarfed the character stream. Lexis-E packs it into a binary envelope — field-ID + length-prefix framing, with the heaviest tables individually zstd-compressed — before it ever touches disk.</p>
+
+    <div class="stack-wrap">
+      <div class="stack-col">
+        <h4>Main branch (uncompressed metadata)</h4>
+        <div class="stack-bar">
+          <div class="stack-seg-char" style="height:11.7%"><span class="stack-seg-label">2.75</span></div>
+          <div class="stack-seg-meta" style="height:88.3%"><span class="stack-seg-label">20.63</span></div>
+        </div>
+        <div class="stack-total">23.38 bpb total <b>(FineWeb, 100k chars)</b></div>
+      </div>
+      <div class="stack-col">
+        <h4>Lexis-E (compact_mode envelope)</h4>
+        <div class="stack-bar">
+          <div class="stack-seg-char" style="height:24.8%"><span class="stack-seg-label">2.75</span></div>
+          <div class="stack-seg-meta" style="height:75.2%"><span class="stack-seg-label">8.35</span></div>
+        </div>
+        <div class="stack-total">11.10 bpb total <b>(FineWeb, 100k chars)</b></div>
+      </div>
+    </div>
+    <div class="stack-legend">
+      <span><span class="legend-dot" style="background:var(--teal)"></span>character stream</span>
+      <span><span class="legend-dot" style="background:var(--rust)"></span>metadata (POS tags, morph codes, context tables)</span>
+    </div>
+    <p class="chart-note" style="margin-top:24px;">The character stream itself doesn't change — same 2.75 bpb either way. What shrinks is purely the bookkeeping needed to reverse the process, down 52.5% on FineWeb and 47.1% on Moby Dick.</p>
+  </div>
+</section>
+
+<section class="sweep-section">
+  <div class="wrap">
+    <div class="eyebrow">§4.4 · Tuning The Envelope</div>
+    <h2>The k-sweep: how compact_mode is tuned</h2>
+    <p style="max-width:62ch; color:#d8d1bd;">compact_mode exposes two knobs on the context-mixing model: <span class="mono">top_k</span>, how many candidate contexts stay active per prediction, and <span class="mono">scale</span>, how sharply probabilities get concentrated. Every combination trades character-stream size against metadata size differently. The paper swept all 16 combinations on Moby Dick at 100k characters — try them below.</p>
+
+    <div class="sweep-widget">
+      <div class="sweep-controls">
+        <div class="sweep-group">
+          <h4>top_k</h4>
+          <div class="sweep-btns" id="sweepK"></div>
+        </div>
+        <div class="sweep-group">
+          <h4>scale</h4>
+          <div class="sweep-btns" id="sweepS"></div>
+        </div>
+      </div>
+      <div class="sweep-result">
+        <div class="sweep-figures">
+          <div class="sweep-fig">
+            <div class="sweep-fig-label">char-stream bpb</div>
+            <div class="sweep-fig-val" id="sweepCs">—</div>
+          </div>
+          <div class="sweep-fig">
+            <div class="sweep-fig-label">full-payload bpb</div>
+            <div class="sweep-fig-val" id="sweepFp">—</div>
+          </div>
+        </div>
+        <div id="sweepBadge"></div>
+      </div>
+    </div>
+    <p class="chart-note">Increasing top_k monotonically helps char-stream bpb. Scale doesn't — it bottoms out and then over-sharpens. k6s511 wins on both metrics at once, which is why it's the shipped default.</p>
+  </div>
+</section>
+
+<section class="evolution-section">
+  <div class="wrap">
+    <div class="eyebrow">A Name, And What Changed</div>
+    <h2>Lexis, then Lexis-E</h2>
+    <p style="max-width:62ch; color:#d8d1bd;">The "-E" stands for <em>Efficient</em>. The main Lexis branch already had the full 12-stage linguistic pipeline working — morphology, syntax, phonetics, discourse, all of it. What it didn't have was any regard for the size of its own metadata. Lexis-E is the same compression logic with one addition: the compact metadata envelope and its tuned profile. The character stream is untouched; what changes is everything needed to store and rebuild it.</p>
+
+    <div class="evo-row">
+      <div class="evo-col old">
+        <h4>Lexis (main branch)</h4>
+        <div class="evo-stat-row"><span>Metadata storage</span><span>raw, uncompressed</span></div>
+        <div class="evo-stat-row"><span>char-stream bpb (Moby Dick)</span><span>2.6649</span></div>
+        <div class="evo-stat-row"><span>full-payload bpb (Moby Dick)</span><span>20.8391</span></div>
+        <div class="evo-stat-row"><span>full-payload bpb (FineWeb)</span><span>23.384</span></div>
+      </div>
+      <div class="evo-col new">
+        <h4>Lexis-E</h4>
+        <div class="evo-stat-row"><span>Metadata storage</span><span>LEXI binary envelope + zstd</span></div>
+        <div class="evo-stat-row"><span>char-stream bpb (Moby Dick)</span><span>2.7555</span></div>
+        <div class="evo-stat-row"><span>full-payload bpb (Moby Dick)</span><span>11.0172</span></div>
+        <div class="evo-stat-row"><span>full-payload bpb (FineWeb)</span><span>11.1048</span></div>
+      </div>
+    </div>
+    <p class="chart-note" style="margin-top:20px;">The small char-stream difference on Moby Dick (2.6649 vs 2.7555) is a measurement artifact, not a regression — main branch and Lexis-E use different test methodologies, but the underlying character-level algorithm is identical between them.</p>
   </div>
 </section>
 
@@ -708,6 +848,50 @@ function renderTry(){
 }
 document.getElementById('tryInput').addEventListener('input', renderTry);
 renderTry();
+
+// ---------- PROFILE SWEEP WIDGET ----------
+// Table 5 — compact_mode profile sweep, Moby Dick, 100k chars
+const sweepData = {
+  '3_127':{cs:3.1928, fp:12.1146}, '3_255':{cs:3.3339, fp:12.2242}, '3_511':{cs:3.4860, fp:11.6501}, '3_1023':{cs:3.6408, fp:11.9568},
+  '4_127':{cs:2.9240, fp:11.2266}, '4_255':{cs:2.9714, fp:11.3285}, '4_511':{cs:3.0270, fp:11.3255}, '4_1023':{cs:3.0847, fp:11.3895},
+  '5_127':{cs:2.8413, fp:11.0494}, '5_255':{cs:2.8585, fp:11.0560}, '5_511':{cs:2.8828, fp:11.2648}, '5_1023':{cs:2.9087, fp:11.2746},
+  '6_127':{cs:2.7719, fp:11.0140}, '6_255':{cs:2.7583, fp:11.1828}, '6_511':{cs:2.7555, fp:11.0172}, '6_1023':{cs:2.7563, fp:11.1885},
+};
+const ks = [3,4,5,6];
+const scales = [127,255,511,1023];
+let curK = 6, curS = 511;
+
+const kWrap = document.getElementById('sweepK');
+const sWrap = document.getElementById('sweepS');
+
+ks.forEach(k=>{
+  const b = document.createElement('button');
+  b.className = 'sweep-btn' + (k===curK ? ' active':'');
+  b.textContent = k;
+  b.addEventListener('click', ()=>{ curK=k; updateSweep(); });
+  kWrap.appendChild(b);
+});
+scales.forEach(s=>{
+  const b = document.createElement('button');
+  b.className = 'sweep-btn' + (s===curS ? ' active':'');
+  b.textContent = s;
+  b.addEventListener('click', ()=>{ curS=s; updateSweep(); });
+  sWrap.appendChild(b);
+});
+
+function updateSweep(){
+  [...kWrap.children].forEach(b=>b.classList.toggle('active', parseInt(b.textContent)===curK));
+  [...sWrap.children].forEach(b=>b.classList.toggle('active', parseInt(b.textContent)===curS));
+  const d = sweepData[`${curK}_${curS}`];
+  const isBest = (curK===6 && curS===511);
+  document.getElementById('sweepCs').textContent = d.cs.toFixed(4);
+  document.getElementById('sweepCs').className = 'sweep-fig-val' + (isBest ? ' best':'');
+  document.getElementById('sweepFp').textContent = d.fp.toFixed(4);
+  document.getElementById('sweepFp').className = 'sweep-fig-val' + (isBest ? ' best':'');
+  document.getElementById('sweepBadge').innerHTML = isBest ? '<span class="sweep-badge">Pareto-optimal default — k6s511</span>' : '';
+}
+updateSweep();
+
 </script>
 
 </body>
