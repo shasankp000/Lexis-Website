@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lexis-E — What English Costs, In Bits</title>
+<meta name="description" content="A linguistically-structured compressor that closes 78% of the gap between raw text and GPT-2, using zero learned weights.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161b;
+    --ink-2:#1b1e25;
+    --paper:#eee7d4;
+    --paper-dim:#a9a390;
+    --teal:#5cbbaa;
+    --rust:#c1543f;
+    --gold:#c9a24b;
+    --line:#34383f;
+    --line-soft:#282b32;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    *{animation-duration:.01ms !important; transition-duration:.01ms !important;}
+  }
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:16px;
+    line-height:1.6;
+  }
+  h1,h2,h3{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    margin:0 0 .4em 0;
+    letter-spacing:-.01em;
+  }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  a{ color:var(--teal); }
+  .wrap{ max-width:920px; margin:0 auto; padding:0 28px; }
+  section{ padding:100px 0; border-bottom:1px solid var(--line-soft); }
+  section:last-of-type{ border-bottom:none; }
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--teal);
+    margin-bottom:14px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:22px; height:1px;
+    background:var(--teal);
+    display:inline-block;
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    padding:120px 0 90px 0;
+    border-bottom:1px solid var(--line-soft);
+    position:relative;
+  }
+  .hero h1{
+    font-size:clamp(2.6rem, 6vw, 4.6rem);
+    line-height:.98;
+    max-width:11ch;
+  }
+  .hero .lede{
+    font-size:1.15rem;
+    color:var(--paper-dim);
+    max-width:56ch;
+    margin-top:22px;
+  }
+  .hero-strip{
+    margin-top:56px;
+    border:1px solid var(--line);
+    background:var(--ink-2);
+  }
+  .strip-row{
+    display:grid;
+    grid-template-columns: 160px 1fr 90px;
+    align-items:center;
+    padding:16px 20px;
+    border-bottom:1px solid var(--line-soft);
+    gap:16px;
+  }
+  .strip-row:last-child{ border-bottom:none; }
+  .strip-label{ font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--paper-dim); }
+  .strip-bar-track{ height:10px; background:var(--line-soft); position:relative; overflow:hidden; }
+  .strip-bar-fill{ height:100%; transform-origin:left; }
+  .strip-val{ font-family:'IBM Plex Mono', monospace; font-size:13px; text-align:right; }
+  .fill-raw{ background:var(--line); }
+  .fill-gzip{ background:#5b6472; }
+  .fill-lexis{ background:var(--teal); }
+  .fill-gpt{ background:var(--gold); }
+
+  .source-tag{
+    margin-top:14px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color:var(--paper-dim);
+  }
+
+  /* ---------- PROBLEM ---------- */
+  .problem p{ max-width:62ch; font-size:1.05rem; color:#d8d1bd; }
+  .problem .q{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:1.5rem;
+    color:var(--paper);
+    max-width:26ch;
+    margin:28px 0 0 0;
+    border-left:2px solid var(--rust);
+    padding-left:20px;
+  }
+
+  /* ---------- STRATA WIDGET ---------- */
+  .strata-intro p{ max-width:62ch; color:#d8d1bd; }
+  .strata-widget{
+    margin-top:40px;
+    border:1px solid var(--line);
+    background:var(--ink-2);
+  }
+  .strata-tabs{
+    display:flex;
+    flex-wrap:wrap;
+    border-bottom:1px solid var(--line);
+  }
+  .strata-tab{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:.03em;
+    background:none;
+    border:none;
+    color:var(--paper-dim);
+    padding:14px 16px;
+    cursor:pointer;
+    border-right:1px solid var(--line-soft);
+    text-align:left;
+    flex:1 1 auto;
+    min-width:110px;
+  }
+  .strata-tab:hover{ color:var(--paper); background:rgba(255,255,255,0.02); }
+  .strata-tab.active{ color:var(--teal); background:rgba(92,187,170,0.07); }
+  .strata-tab .tnum{ display:block; color:var(--rust); font-size:11px; margin-bottom:3px; }
+
+  .strata-body{ padding:32px; min-height:280px; }
+  .strata-sentence{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:1.15rem;
+    line-height:1.9;
+    margin-bottom:26px;
+    word-spacing:2px;
+  }
+  .tok{ padding:2px 3px; border-radius:2px; transition:background .2s; }
+  .tok.hl{ background:rgba(92,187,170,0.18); color:var(--teal); }
+  .tok.hl-rust{ background:rgba(193,84,63,0.2); color:#e59080; }
+  .tok.hl-gold{ background:rgba(201,162,75,0.2); color:var(--gold); }
+  .strata-desc{ color:#d8d1bd; max-width:60ch; font-size:.98rem; }
+  .strata-desc strong{ color:var(--paper); }
+  .strata-annot{
+    margin-top:20px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color:var(--paper-dim);
+    border:1px solid var(--line);
+    padding:5px 10px;
+  }
+  .chip b{ color:var(--gold); }
+
+  /* ---------- RESULTS CHART ---------- */
+  .chart-wrap{ margin-top:40px; }
+  .bar-row{ display:grid; grid-template-columns: 150px 1fr 80px; align-items:center; gap:16px; margin-bottom:14px; }
+  .bar-name{ font-family:'IBM Plex Mono', monospace; font-size:13px; }
+  .bar-track{ height:22px; background:var(--line-soft); position:relative; }
+  .bar-fill{ height:100%; }
+  .bar-val{ font-family:'IBM Plex Mono', monospace; font-size:13px; text-align:right; }
+  .bar-fill.classical{ background:#5b6472; }
+  .bar-fill.lexis{ background:var(--teal); }
+  .bar-fill.neural{ background:var(--gold); }
+  .chart-note{ margin-top:18px; font-size:.85rem; color:var(--paper-dim); max-width:60ch; }
+
+  /* ---------- CONTRIBUTIONS ---------- */
+  .contrib-grid{ margin-top:40px; display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); }
+  .contrib-card{ background:var(--ink); padding:26px; }
+  .contrib-card h3{ font-size:1.05rem; margin-bottom:10px; }
+  .contrib-card .contrib-eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--rust); letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px; }
+  .contrib-card p{ font-size:.92rem; color:#d8d1bd; margin:0; }
+  .contrib-card .contrib-stat{ font-family:'IBM Plex Mono', monospace; color:var(--gold); font-size:.85rem; margin-top:12px; display:block; }
+  @media (max-width:640px){ .contrib-grid{ grid-template-columns:1fr; } }
+
+  /* ---------- ATTRIBUTION LADDER ---------- */
+  .ladder{ margin-top:40px; border:1px solid var(--line); background:var(--ink-2); }
+  .ladder-row{ display:grid; grid-template-columns:36px 1fr auto; gap:18px; padding:20px 24px; border-bottom:1px solid var(--line-soft); align-items:start; }
+  .ladder-row:last-child{ border-bottom:none; }
+  .ladder-num{ font-family:'Fraunces', serif; font-size:1.3rem; color:var(--line); font-weight:600; }
+  .ladder-body h4{ font-family:'IBM Plex Sans', sans-serif; font-weight:600; font-size:.98rem; margin:0 0 6px 0; color:var(--paper); }
+  .ladder-body p{ margin:0; font-size:.9rem; color:var(--paper-dim); max-width:56ch; }
+  .ladder-tag{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--teal); white-space:nowrap; align-self:center; }
+
+  /* ---------- COMPARISON TABLE ---------- */
+  .cmp-table{ margin-top:40px; width:100%; border-collapse:collapse; font-size:.9rem; }
+  .cmp-table th, .cmp-table td{ padding:12px 14px; border-bottom:1px solid var(--line-soft); text-align:left; }
+  .cmp-table th{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--paper-dim); font-weight:500; }
+  .cmp-table td{ color:#d8d1bd; }
+  .cmp-table tr:last-child td{ border-bottom:none; }
+  .cmp-table td.check{ color:var(--teal); font-family:'IBM Plex Mono', monospace; }
+  .cmp-table td.cross{ color:var(--paper-dim); font-family:'IBM Plex Mono', monospace; }
+
+  /* ---------- LIMITS ---------- */
+  .limits-grid{ margin-top:36px; display:grid; grid-template-columns:repeat(2,1fr); gap:24px 40px; }
+  .limit-item{ border-left:2px solid var(--line); padding-left:16px; }
+  .limit-item h4{ font-size:.92rem; margin:0 0 6px 0; color:var(--paper); font-family:'IBM Plex Sans', sans-serif; font-weight:600; }
+  .limit-item p{ margin:0; font-size:.88rem; color:var(--paper-dim); }
+  @media (max-width:640px){ .limits-grid{ grid-template-columns:1fr; } }
+
+  /* ---------- 78% FINDING ---------- */
+  .finding{
+    margin-top:44px;
+    border:1px solid var(--line);
+    background:var(--ink-2);
+    padding:36px;
+  }
+  .finding-big{
+    font-family:'Fraunces', serif;
+    font-size:clamp(3rem, 8vw, 5.5rem);
+    font-weight:700;
+    color:var(--teal);
+    line-height:1;
+  }
+  .finding-sub{ color:var(--paper-dim); margin-top:6px; max-width:50ch; }
+  .gap-bar{
+    margin-top:34px;
+    height:44px;
+    display:flex;
+    border:1px solid var(--line);
+  }
+  .gap-seg{ display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono', monospace; font-size:12px; }
+  .gap-structural{ background:var(--teal); color:#0d1210; width:78.3%; }
+  .gap-residual{ background:var(--line-soft); color:var(--paper-dim); width:21.7%; }
+  .gap-labels{ display:flex; justify-content:space-between; margin-top:8px; font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--paper-dim); }
+
+  /* ---------- TRY IT ---------- */
+  .try-widget{ margin-top:40px; border:1px solid var(--line); background:var(--ink-2); padding:32px; }
+  .try-input{
+    width:100%;
+    background:var(--ink);
+    border:1px solid var(--line);
+    color:var(--paper);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    padding:14px;
+    resize:vertical;
+    min-height:70px;
+  }
+  .try-input:focus{ outline:2px solid var(--teal); outline-offset:2px; }
+  .try-out{ margin-top:20px; font-family:'IBM Plex Mono', monospace; font-size:1.05rem; line-height:2; min-height:2.2em; }
+  .try-legend{ margin-top:18px; display:flex; gap:18px; flex-wrap:wrap; font-size:11.5px; color:var(--paper-dim); font-family:'IBM Plex Mono', monospace; }
+  .legend-dot{ display:inline-block; width:9px; height:9px; margin-right:6px; border-radius:1px; vertical-align:middle; }
+  .try-caveat{ margin-top:16px; font-size:.82rem; color:var(--paper-dim); max-width:60ch; }
+
+  /* ---------- FOOTER ---------- */
+  footer{ padding:70px 0 90px 0; }
+  .foot-grid{ display:flex; flex-wrap:wrap; gap:36px; justify-content:space-between; align-items:flex-start; }
+  .foot-links a{ display:block; color:var(--paper); text-decoration:none; font-family:'IBM Plex Mono', monospace; font-size:13.5px; margin-bottom:10px; border-bottom:1px solid transparent; }
+  .foot-links a:hover{ border-bottom-color:var(--teal); }
+  .cite-box{
+    background:var(--ink-2);
+    border:1px solid var(--line);
+    padding:18px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--paper-dim);
+    max-width:420px;
+    line-height:1.7;
+    white-space:pre-wrap;
+  }
+  .foot-note{ margin-top:60px; font-size:12.5px; color:var(--paper-dim); }
+
+  button:focus-visible, a:focus-visible, .strata-tab:focus-visible{
+    outline:2px solid var(--teal);
+    outline-offset:2px;
+  }
+
+  @media (max-width:640px){
+    section{ padding:64px 0; }
+    .strip-row{ grid-template-columns: 90px 1fr 70px; }
+    .strata-body{ padding:22px; }
+    .bar-row{ grid-template-columns: 90px 1fr 60px; }
+    .finding{ padding:24px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Lexis-E · Independent Research, 2026</div>
+    <h1>English compresses itself, if you know where to cut.</h1>
+    <p class="lede">A 12-stage compressor that strips morphological, syntactic, phonetic, and discourse redundancy from text by hand — no training corpus, no learned weights. It closes 78% of the gap between raw UTF-8 and GPT-2.</p>
+
+    <div class="hero-strip">
+      <div class="strip-row">
+        <div class="strip-label">Raw UTF-8</div>
+        <div class="strip-bar-track"><div class="strip-bar-fill fill-raw" style="width:100%"></div></div>
+        <div class="strip-val">8.00</div>
+      </div>
+      <div class="strip-row">
+        <div class="strip-label">gzip / zstd / xz</div>
+        <div class="strip-bar-track"><div class="strip-bar-fill fill-gzip" style="width:38.8%"></div></div>
+        <div class="strip-val">~3.1–3.4</div>
+      </div>
+      <div class="strip-row">
+        <div class="strip-label">Lexis-E</div>
+        <div class="strip-bar-track"><div class="strip-bar-fill fill-lexis" style="width:34.4%"></div></div>
+        <div class="strip-val">2.75</div>
+      </div>
+      <div class="strip-row">
+        <div class="strip-label">GPT-2 1.5B</div>
+        <div class="strip-bar-track"><div class="strip-bar-fill fill-gpt" style="width:16.25%"></div></div>
+        <div class="strip-val">~1.30</div>
+      </div>
+    </div>
+    <div class="source-tag">bits per byte, lower is better · FineWeb, 100k characters</div>
+  </div>
+</header>
+
+<section class="problem">
+  <div class="wrap">
+    <div class="eyebrow">The Question</div>
+    <h2>What does a language model actually learn?</h2>
+    <p>Compression and prediction are the same problem. A model that predicts English well also compresses it well — that's just arithmetic coding. GPT-2 gets to about 1.30 bits per byte by learning statistical patterns from enormous amounts of text. But nobody has asked how much of that 1.30 is genuinely statistical discovery, and how much is just the model re-deriving things linguists already wrote down decades ago: that verbs inflect predictably, that pronouns corefer, that consonant clusters cluster.</p>
+    <p class="q">Lexis-E answers this by building a compressor with zero learning, made entirely of explicit linguistic rules — and measuring how far it gets.</p>
+  </div>
+</section>
+
+<section class="strata-intro">
+  <div class="wrap">
+    <div class="eyebrow">The Pipeline</div>
+    <h2>Six cuts through one sentence</h2>
+    <p>Lexis-E runs text through 12 stages. Below are six of them, applied to the same sentence in order. Each stage strips away a layer of predictable structure before handing a leaner representation to the next — like reading down through sediment, where each layer records something the one above it already assumed.</p>
+
+    <div class="strata-widget">
+      <div class="strata-tabs" id="strataTabs" role="tablist" aria-label="Pipeline stages"></div>
+      <div class="strata-body" id="strataBody"></div>
+    </div>
+  </div>
+</section>
+
+<section class="chart-section">
+  <div class="wrap">
+    <div class="eyebrow">The Result</div>
+    <h2>Beats classical compressors with zero statistics</h2>
+    <p style="max-width:62ch; color:#d8d1bd;">Character-stream bits per byte on FineWeb, 100,000 characters. Lexis-E is slower than gzip by a wide margin and isn't meant to replace it — the point is that pure linguistic structure, with no corpus and no training, closes most of the distance to a trained neural model.</p>
+
+    <div class="chart-wrap" id="chartWrap"></div>
+    <p class="chart-note">cmix and GPT-2 figures are published reference points measured on different corpora (enwik8 and WebText respectively) — included for orientation, not a controlled comparison.</p>
+
+    <h2 style="margin-top:70px;">Where the gains actually come from</h2>
+    <p style="max-width:62ch; color:#d8d1bd;">The 5.25 bpb improvement over raw UTF-8 isn't one trick — it's five stages compounding on each other. Each stage reduces the entropy of what the next stage sees, so the gains multiply rather than add. Ordered roughly by where they sit in the pipeline:</p>
+
+    <div class="ladder">
+      <div class="ladder-row">
+        <div class="ladder-num">01</div>
+        <div class="ladder-body">
+          <h4>Morphological decomposition</h4>
+          <p>Storing (root, transformation code) instead of full inflected surface forms — "swimming" as (swim, GERUND) rather than six raw characters.</p>
+        </div>
+        <div class="ladder-tag">≈15.1% char reduction</div>
+      </div>
+      <div class="ladder-row">
+        <div class="ladder-num">02</div>
+        <div class="ladder-body">
+          <h4>Mixed-radix phonetic decomposition</h4>
+          <p>Encoding characters as (phonetic class, position, morphological role) triples and taking deltas between them, so phonetically-adjacent characters cost almost nothing to encode.</p>
+        </div>
+        <div class="ladder-tag">2.42× smaller deltas</div>
+      </div>
+      <div class="ladder-row">
+        <div class="ladder-num">03</div>
+        <div class="ladder-body">
+          <h4>Discourse coreference substitution</h4>
+          <p>Repeated entity mentions collapse to a placeholder token instead of being spelled out again. Costs a little on short documents, pays off past ~2,000 bytes.</p>
+        </div>
+        <div class="ladder-tag">net-positive above ~2KB</div>
+      </div>
+      <div class="ladder-row">
+        <div class="ladder-num">04</div>
+        <div class="ladder-body">
+          <h4>Online context mixing</h4>
+          <p>Three linguistic evidence sources — character, morphological, and syntactic context — are blended by an adaptive model trained only on the document itself, and get sharper the longer the document runs.</p>
+        </div>
+        <div class="ladder-tag">improves with length</div>
+      </div>
+      <div class="ladder-row">
+        <div class="ladder-num">05</div>
+        <div class="ladder-body">
+          <h4>Case flag separation</h4>
+          <p>Capitalization is stripped into a separate bitmap entirely, so the arithmetic coder only ever sees a flat, lowercase character distribution — one less source of variance to model.</p>
+        </div>
+        <div class="ladder-tag">simplifies char stream</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="contributions-section">
+  <div class="wrap">
+    <div class="eyebrow">Under The Hood</div>
+    <h2>Four ideas that make it work</h2>
+    <p style="max-width:62ch; color:#d8d1bd;">Lexis-E's compression ratio is a side effect of the real engineering problem: how do you turn linguistic knowledge into something an arithmetic coder can use? Four contributions carry most of the weight.</p>
+
+    <div class="contrib-grid">
+      <div class="contrib-card">
+        <div class="contrib-eyebrow">§4.1</div>
+        <h3>Mixed-radix phonetic decomposition</h3>
+        <p>A flat character ID throws away everything linguistics knows about that character — that 'b' and 'p' are both bilabial stops, that 's' at a word boundary usually marks a morpheme. Lexis-E instead encodes a (phonetic class, intra-class position, morphological role) triple per character, then only stores the delta between consecutive triples.</p>
+        <span class="contrib-stat">7 phonetic classes, deltas 2.42× smaller</span>
+      </div>
+      <div class="contrib-card">
+        <div class="contrib-eyebrow">§4.2</div>
+        <h3>Factoriadic delta encoding</h3>
+        <p>The delta stream from phonetic decomposition clusters tightly around zero. Rather than a fixed-width or Golomb code, Lexis-E encodes deltas in the factorial number system, where small integers get especially compact representations and larger ones grow slowly — matching the heavy-but-thin tail of the real distribution.</p>
+        <span class="contrib-stat">optimized for near-zero-heavy streams</span>
+      </div>
+      <div class="contrib-card">
+        <div class="contrib-eyebrow">§4.3</div>
+        <h3>Anchor-based symbol slot splicing</h3>
+        <p>Placeholder tokens for common words and coreferent entities need to be re-spliced back into the text on decode. Storing absolute offsets drifts on long documents; Lexis-E places anchors every 200 characters and interpolates between them instead.</p>
+        <span class="contrib-stat">zero drift past 10,000 characters</span>
+      </div>
+      <div class="contrib-card">
+        <div class="contrib-eyebrow">§4.4</div>
+        <h3>Compact metadata envelope</h3>
+        <p>The character stream is only part of the file — POS tags, morphological codes, and context tables all need storing too. A field-ID + length-prefix binary envelope, with the heaviest tables individually zstd-compressed, cuts that overhead roughly in half.</p>
+        <span class="contrib-stat">47–52% smaller full-payload size</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="finding-section">
+  <div class="wrap">
+    <div class="eyebrow">The Finding</div>
+    <div class="finding">
+      <div class="finding-big">78.3%</div>
+      <p class="finding-sub">of the total compressibility gap between raw UTF-8 (8.00 bpb) and GPT-2 1.5B (~1.30 bpb) is closed by explicit linguistic structure alone — no training, no learned weights.</p>
+      <div class="gap-bar">
+        <div class="gap-seg gap-structural">5.25 bpb — structural</div>
+        <div class="gap-seg gap-residual">1.45 — residual</div>
+      </div>
+      <div class="gap-labels"><span>UTF-8 → 8.00</span><span>GPT-2 1.5B → ~1.30</span></div>
+    </div>
+
+    <p style="margin-top:32px; max-width:62ch; color:#d8d1bd;">Read plainly: if a billion-parameter model spends its training run rediscovering that "swimming" is "swim" plus a gerund marker, that's not new knowledge about the world — it's linguistics, re-derived at enormous computational cost. The residual 21.7% is presumably where the genuinely statistical, corpus-scale patterns live: idiom, register, world knowledge, the kind of thing no rulebook fully captures.</p>
+  </div>
+</section>
+
+<section class="related-work">
+  <div class="wrap">
+    <div class="eyebrow">In Context</div>
+    <h2>Where this sits</h2>
+    <p style="max-width:62ch; color:#d8d1bd;">Compression and language modeling have been formally equivalent since Shannon — any good predictor is a good compressor, via arithmetic coding. What's less explored is compression built entirely from linguistic rules rather than statistics learned from data. Here's how Lexis-E compares to what's come before:</p>
+
+    <table class="cmp-table">
+      <thead>
+        <tr><th>System</th><th>Approach</th><th>Learns from a corpus?</th><th>~bpb (own benchmark)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>gzip / zstd / xz</td><td>Dictionary + entropy coding</td><td class="cross">no training, but no linguistics either</td><td>3.1 – 3.4</td></tr>
+        <tr><td>PPM / PAQ family</td><td>Statistical context mixing</td><td class="check">yes, adaptively per-document or pretrained</td><td>varies</td></tr>
+        <tr><td>cmix</td><td>Neural-extended context mixing</td><td class="check">yes</td><td>~1.17 (enwik8)</td></tr>
+        <tr><td>GPT-2 1.5B</td><td>Transformer language model</td><td class="check">yes, large pretraining corpus</td><td>~1.30 (WebText)</td></tr>
+        <tr><td>Lexis-E</td><td>Explicit linguistic pipeline</td><td class="cross">no — online model trained only on the document itself</td><td>2.75 (FineWeb)</td></tr>
+      </tbody>
+    </table>
+    <p class="chart-note">To our knowledge, no prior system combines morphological decomposition, syntactic tagging, coreference resolution, phonetic organization, and context mixing into one linguistically-motivated pipeline — most existing work in this space picks one of these signals, not all of them together.</p>
+  </div>
+</section>
+
+<section class="limits-section">
+  <div class="wrap">
+    <div class="eyebrow">Honestly</div>
+    <h2>What this doesn't do (yet)</h2>
+    <p style="max-width:62ch; color:#d8d1bd;">This is a research instrument, not a production tool, and the paper is upfront about where it falls short.</p>
+
+    <div class="limits-grid">
+      <div class="limit-item">
+        <h4>Full-payload size stays high</h4>
+        <p>Even after halving metadata overhead, the complete file is still roughly 4× larger than the character stream alone — the context tables are expensive to store.</p>
+      </div>
+      <div class="limit-item">
+        <h4>Not byte-exact</h4>
+        <p>Punctuation normalization in Stage 1 means decoded output is semantically identical to the input but not always byte-for-byte reconstructable.</p>
+      </div>
+      <div class="limit-item">
+        <h4>Slow by design</h4>
+        <p>The full pipeline takes about 9 minutes to compress 100,000 characters — this trades speed for interpretability, not the other way around.</p>
+      </div>
+      <div class="limit-item">
+        <h4>The 78% figure isn't fully controlled</h4>
+        <p>Lexis-E was measured on FineWeb, GPT-2's figure comes from WebText. Directionally robust, but not an apples-to-apples run on identical data — yet.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:36px; max-width:62ch; color:#d8d1bd;">The more interesting open question is what happens if a small neural model is conditioned on Lexis-E's linguistic representations instead of raw tokens — spending its entire parameter budget on the residual ~22% that's genuinely statistical, rather than re-learning morphology from scratch. That's the direction the paper points toward next.</p>
+  </div>
+</section>
+
+<section class="try-section">
+  <div class="wrap">
+    <div class="eyebrow">Try It</div>
+    <h2>See the phonetic layer on your own text</h2>
+    <p style="max-width:62ch; color:#d8d1bd;">This is a simplified, browser-side illustration of two ideas from the paper — phonetic classing and suffix-stripping — not the real 12-stage pipeline, which relies on spaCy and coreference models that can't run client-side. Type a sentence to see it colored by phonetic class, with common inflectional suffixes marked.</p>
+
+    <div class="try-widget">
+      <textarea class="try-input" id="tryInput" placeholder="Type a sentence…">The whales were swimming quickly toward the horizon.</textarea>
+      <div class="try-out" id="tryOut"></div>
+      <div class="try-legend">
+        <span><span class="legend-dot" style="background:var(--teal)"></span>vowel</span>
+        <span><span class="legend-dot" style="background:var(--rust)"></span>consonant cluster</span>
+        <span><span class="legend-dot" style="background:var(--gold)"></span>inflectional suffix</span>
+      </div>
+      <p class="try-caveat">The real Lexis-E uses a 7-class mixed-radix phonetic taxonomy and lemminflect-based morphological analysis. This demo uses a hand-rolled approximation for illustration only.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <h3 style="font-size:1.1rem;">Lexis-E</h3>
+        <p style="color:var(--paper-dim); max-width:34ch; font-size:.92rem;">Shasank Prasad, Independent Researcher, 2026.</p>
+        <div class="foot-links" style="margin-top:20px;">
+          <a href="https://doi.org/10.5281/zenodo.20775691" target="_blank" rel="noopener">Read the paper on Zenodo →</a>
+          <a href="https://github.com/shasankp000/Lexis" target="_blank" rel="noopener">Source on GitHub →</a>
+          <a href="https://orcid.org/0009-0001-6315-1717" target="_blank" rel="noopener">ORCID profile →</a>
+        </div>
+      </div>
+      <div class="cite-box">Prasad, S. (2026). Lexis-E: Linguistically-Structured
+Hierarchical Text Compression and the
+Structural Compressibility of English.
+Zenodo. https://doi.org/10.5281/zenodo.20775691</div>
+    </div>
+    <p class="foot-note">Figures on this page are drawn directly from the paper's reported results (Tables 1–2, Section 7.1). Full methodology, limitations, and the complete 12-stage architecture are in the paper.</p>
+  </div>
+</footer>
+
+<script>
+// ---------- STRATA WIDGET ----------
+const stages = [
+  {
+    label: "Raw text",
+    num: "IN",
+    render: () => `<span class="tok">The whales were swimming quickly toward the horizon.</span>`,
+    desc: `Unmodified input. Nothing has been assumed about it yet — to a byte-level compressor, this is just a run of 53 characters with no internal structure.`,
+    chips: []
+  },
+  {
+    label: "Normalize",
+    num: "S1",
+    render: () => `<span class="tok hl">The whales were swimming quickly toward the horizon.</span><span class="tok" style="color:var(--paper-dim)"> ⟨SENT_END⟩</span>`,
+    desc: `Whitespace is collapsed, punctuation is mapped to a canonical form, and sentence boundaries are marked explicitly. This is the only stage that isn't perfectly reversible — quote and dash spacing can shift slightly on reconstruction.`,
+    chips: ["sentence boundary marked"]
+  },
+  {
+    label: "Morphology",
+    num: "S2",
+    render: () => `The <span class="tok hl">whale</span><span class="chip" style="margin:0 4px;">PLURAL</span>s were <span class="tok hl">swim</span><span class="chip" style="margin:0 4px;">GERUND</span>ming <span class="tok hl">quick</span><span class="chip" style="margin:0 4px;">ADVERB</span>ly toward the horizon.`,
+    desc: `Every inflected word is decomposed into a (<strong>root</strong>, <strong>transformation code</strong>) pair. "whales" becomes (whale, PLURAL); "swimming" becomes (swim, GERUND). Only the root needs to be stored per occurrence — the transformation code is a small integer, not a repeated suffix.`,
+    chips: ["≈15.1% character reduction from this stage alone"]
+  },
+  {
+    label: "Syntax",
+    num: "S3",
+    render: () => `<span class="tok hl-gold">DET</span> <span class="tok hl-gold">NOUN</span> <span class="tok hl-gold">AUX</span> <span class="tok hl-gold">VERB</span> <span class="tok hl-gold">ADV</span> <span class="tok hl-gold">ADP</span> <span class="tok hl-gold">DET</span> <span class="tok hl-gold">NOUN</span>`,
+    desc: `A transformer parser (spaCy, en_core_web_trf) tags each token with its part of speech and builds a dependency tree. These POS tags aren't stored raw — they become a structural evidence source that later biases the probability model toward likely next characters.`,
+    chips: ["Huffman-coded", "feeds Stage 6 as struct_context"]
+  },
+  {
+    label: "Phonetics",
+    num: "S5",
+    render: () => `<span class="tok hl-rust">+2</span> <span class="tok hl-rust">−1</span> <span class="tok hl-rust">+1</span> <span class="tok hl-rust">0</span> <span class="tok hl-rust">+3</span> <span class="tok hl-rust">−2</span> <span class="tok hl-rust">+1</span> <span class="tok hl-rust">0</span> <span class="tok hl-rust">−1</span>`,
+    desc: `Each character is decomposed into a (phonetic class, position-in-class, morphological role) triple, and only the <em>delta</em> between successive triples is kept — not absolute values. Because phonetically similar characters tend to sit next to each other in English, this delta stream clusters tightly around zero.`,
+    chips: ["2.42× smaller deltas than flat character IDs"]
+  },
+  {
+    label: "Arithmetic code",
+    num: "S7",
+    render: () => `<span class="tok" style="color:var(--teal); letter-spacing:1px;">01101 00111 10010 …</span>`,
+    desc: `The delta stream, weighted by a live probability model blending character, morphological, and syntactic context, is packed into a single arithmetic-coded bitstream. This is the last stage before the file hits disk — everything upstream exists to make this bitstream as short as it can honestly be.`,
+    chips: ["2.75 bpb on this stream, FineWeb 100k chars"]
+  }
+];
+
+const tabsEl = document.getElementById('strataTabs');
+const bodyEl = document.getElementById('strataBody');
+
+function renderStage(i){
+  document.querySelectorAll('.strata-tab').forEach((t,idx)=>t.classList.toggle('active', idx===i));
+  const s = stages[i];
+  bodyEl.innerHTML = `
+    <div class="strata-sentence">${s.render()}</div>
+    <div class="strata-desc">${s.desc}</div>
+    <div class="strata-annot">${s.chips.map(c=>`<span class="chip">${c}</span>`).join('')}</div>
+  `;
+}
+
+stages.forEach((s,i)=>{
+  const btn = document.createElement('button');
+  btn.className = 'strata-tab' + (i===0 ? ' active':'');
+  btn.setAttribute('role','tab');
+  btn.innerHTML = `<span class="tnum">${s.num}</span>${s.label}`;
+  btn.addEventListener('click', ()=>renderStage(i));
+  tabsEl.appendChild(btn);
+});
+renderStage(0);
+
+// ---------- RESULTS CHART ----------
+const bars = [
+  {name:'Raw UTF-8', val:8.00, cls:'classical'},
+  {name:'gzip -9', val:3.3948, cls:'classical'},
+  {name:'zstd -19', val:3.1828, cls:'classical'},
+  {name:'xz -9', val:3.1079, cls:'classical'},
+  {name:'Lexis-E', val:2.7523, cls:'lexis'},
+  {name:'cmix*', val:1.17, cls:'neural'},
+  {name:'GPT-2 1.5B*', val:1.30, cls:'neural'},
+];
+const max = 8.00;
+const chartWrap = document.getElementById('chartWrap');
+bars.forEach(b=>{
+  const pct = (b.val/max*100).toFixed(1);
+  const row = document.createElement('div');
+  row.className = 'bar-row';
+  row.innerHTML = `
+    <div class="bar-name">${b.name}</div>
+    <div class="bar-track"><div class="bar-fill ${b.cls}" style="width:${pct}%"></div></div>
+    <div class="bar-val">${b.val.toFixed(2)}</div>
+  `;
+  chartWrap.appendChild(row);
+});
+
+// ---------- TRY IT WIDGET ----------
+const VOWELS = 'aeiouAEIOU';
+const SUFFIXES = ['ing','ly','ed','es','s','er','est'];
+
+function classify(word){
+  // returns array of {ch, cls} with a naive suffix check applied to the whole word
+  const lower = word.toLowerCase();
+  let suffixLen = 0;
+  for(const suf of SUFFIXES){
+    if(lower.length > suf.length + 2 && lower.endsWith(suf)){
+      suffixLen = suf.length;
+      break;
+    }
+  }
+  const chars = word.split('');
+  return chars.map((ch,idx)=>{
+    const isSuffix = idx >= word.length - suffixLen;
+    let cls = 'plain';
+    if(/[a-zA-Z]/.test(ch)){
+      if(isSuffix) cls = 'suffix';
+      else if(VOWELS.includes(ch)) cls = 'vowel';
+      else cls = 'consonant';
+    }
+    return {ch, cls};
+  });
+}
+
+function renderTry(){
+  const text = document.getElementById('tryInput').value;
+  const words = text.split(/(\s+)/); // keep separators
+  const out = words.map(w=>{
+    if(/^\s+$/.test(w) || w.length===0) return w;
+    const cleanMatch = w.match(/^([a-zA-Z']+)([.,!?;:]*)$/);
+    if(!cleanMatch) return `<span>${w}</span>`;
+    const [, core, trail] = cleanMatch;
+    const classified = classify(core);
+    // group consecutive consonants into clusters visually via rust color, single consonants still rust
+    const spans = classified.map(({ch,cls})=>{
+      let color = 'inherit';
+      if(cls==='vowel') color = 'var(--teal)';
+      if(cls==='consonant') color = 'var(--rust)';
+      if(cls==='suffix') color = 'var(--gold)';
+      return `<span style="color:${color}">${ch}</span>`;
+    }).join('');
+    return `<span>${spans}${trail}</span>`;
+  }).join('');
+  document.getElementById('tryOut').innerHTML = out;
+}
+document.getElementById('tryInput').addEventListener('input', renderTry);
+renderTry();
+</script>
+
+</body>
+</html>
